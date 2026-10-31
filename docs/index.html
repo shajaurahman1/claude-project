@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FairFare – Auto-Rickshaw Fare Checker</title>
+<meta name="description" content="FairFare is a Java desktop app that checks whether an auto-rickshaw fare is fair or excessive using official city rates. PBCST304 OOP mini project.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --border: #e2e5ea;
+    --text: #212529;
+    --muted: #6c757d;
+    --primary: #ffc107;
+    --primary-dark: #f0aa00;
+    --green: #2e7d32;
+    --green-light: #e8f5e9;
+    --red: #c62828;
+    --red-light: #ffebee;
+    --code-bg: #f1f3f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121417;
+      --card: #1b1e22;
+      --border: #2c3036;
+      --text: #e9ecef;
+      --muted: #9aa3ab;
+      --green-light: #16301a;
+      --red-light: #3a1719;
+      --code-bg: #24282d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121417; --card: #1b1e22; --border: #2c3036; --text: #e9ecef;
+    --muted: #9aa3ab; --green-light: #16301a; --red-light: #3a1719; --code-bg: #24282d;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+
+  /* Header */
+  header {
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    color: #212529;
+  }
+  header .wrap { padding-top: 56px; padding-bottom: 64px; }
+  .badge {
+    display: inline-block; font-size: 13px; font-weight: 600;
+    background: rgba(33, 37, 41, .1); padding: 4px 12px; border-radius: 999px;
+  }
+  h1 { font-size: clamp(36px, 7vw, 56px); line-height: 1.1; margin: 16px 0 8px; font-weight: 800; letter-spacing: -0.02em; }
+  .lead { font-size: clamp(17px, 2.4vw, 20px); max-width: 640px; margin: 0 0 28px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-block; text-decoration: none; font-weight: 600; font-size: 15px;
+    padding: 12px 20px; border-radius: 12px; transition: transform .1s, background .15s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-dark { background: #212529; color: #fff; }
+  .btn-dark:hover { background: #343a40; }
+  .btn-light { background: rgba(255, 255, 255, .55); color: #212529; }
+  .btn-light:hover { background: rgba(255, 255, 255, .8); }
+
+  /* Screenshot */
+  .shot {
+    margin-top: -36px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, .12);
+  }
+  .shot img { display: block; width: 100%; height: auto; border-radius: 10px; }
+
+  /* Sections */
+  section { padding: 56px 0 8px; }
+  h2 { font-size: clamp(24px, 4vw, 30px); margin: 0 0 8px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%; background: var(--primary);
+    color: #212529; font-weight: 700; font-size: 14px; margin-bottom: 10px;
+  }
+
+  /* Formula */
+  .formula {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px;
+    background: var(--code-bg); border-radius: 12px; padding: 16px; overflow-x: auto; margin: 0 0 20px;
+    white-space: pre;
+  }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  td.amt { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; }
+  .verdict {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px;
+    padding: 16px 20px; border-radius: 14px; background: var(--red-light); border: 1px solid var(--red);
+  }
+  .verdict strong { color: var(--red); font-size: 24px; letter-spacing: .02em; }
+  .verdict span { color: var(--red); font-weight: 600; }
+
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+  .pill.fair { background: var(--green-light); color: var(--green); }
+  .pill.bad { background: var(--red-light); color: var(--red); }
+
+  /* Gallery */
+  .gallery { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid var(--border); }
+  figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em;
+    background: var(--code-bg); padding: 2px 6px; border-radius: 6px;
+  }
+  pre.run {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px;
+    background: var(--code-bg); border-radius: 12px; padding: 16px; overflow-x: auto; margin: 0;
+  }
+
+  footer { padding: 48px 0 40px; color: var(--muted); font-size: 14px; text-align: center; }
+
+  @media (max-width: 600px) {
+    header .wrap { padding-top: 40px; padding-bottom: 56px; }
+    .card { padding: 16px; }
+    th, td { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="badge">PBCST304 · Object Oriented Programming · Mini Project</span>
+    <h1>FairFare</h1>
+    <p class="lead">An auto-rickshaw fare checker. Enter your trip and what the driver asked for, and FairFare tells you if it's <strong>fair</strong> or <strong>excessive</strong>, based on official city rates.</p>
+    <div class="buttons">
+      <a class="btn btn-dark" href="https://github.com/shajaurahman1/claude-project">View source on GitHub</a>
+      <a class="btn btn-light" href="#run">How to run</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="shot">
+    <img src="screenshots/excessive.png" alt="FairFare window showing an EXCESSIVE verdict: official fare Rs 156, driver demanded Rs 200, difference +44" width="1120" height="700">
+  </div>
+
+  <section>
+    <h2>How it works</h2>
+    <p class="sub">Five steps from pickup point to verdict.</p>
+    <div class="grid">
+      <div class="card"><div class="num">1</div><h3>Enter the trip</h3><p>Choose the city, pickup point and destination.</p></div>
+      <div class="card"><div class="num">2</div><h3>Get the distance</h3><p>Looked up from the built-in route table, or typed in by hand.</p></div>
+      <div class="card"><div class="num">3</div><h3>Calculate the fare</h3><p>Minimum fare + per-km rate, plus waiting and night charges.</p></div>
+      <div class="card"><div class="num">4</div><h3>Compare</h3><p>Checks the driver's demand against the official fare.</p></div>
+      <div class="card"><div class="num">5</div><h3>Verdict + history</h3><p><span class="pill fair">FAIR</span> or <span class="pill bad">EXCESSIVE</span>, and every check is saved.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The fare formula</h2>
+    <p class="sub">Rates are set per city and can be updated in the app.</p>
+<div class="formula">Distance fare = minimum fare + (distance − minimum km) × per-km rate
+Waiting       = waiting minutes × waiting rate
+Night charge  = night % × distance fare      (only during night hours)
+Official fare = total, rounded to the nearest rupee</div>
+
+    <div class="card">
+      <h3>Worked example: Kochi, 6 km, 10 min waiting, at night</h3>
+      <p style="margin-bottom:12px">Kochi rates: Rs 30 for the first 1.5 km, then Rs 15/km, Rs 1/min waiting, 50% extra from 22:00 to 05:00.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Calculation</th><th style="text-align:right">Amount</th></tr></thead>
+          <tbody>
+            <tr><td>Distance fare</td><td>30 + 4.5 × 15</td><td class="amt">Rs 97.50</td></tr>
+            <tr><td>Waiting charge</td><td>10 × 1</td><td class="amt">Rs 10.00</td></tr>
+            <tr><td>Night charge</td><td>50% of 97.50</td><td class="amt">Rs 48.75</td></tr>
+            <tr class="total"><td>Official fare</td><td>rounded</td><td class="amt">Rs 156</td></tr>
+            <tr><td>Driver demanded</td><td></td><td class="amt">Rs 200</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="verdict"><strong>EXCESSIVE</strong><span>Driver asked Rs 44 more than the official fare</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Screens</h2>
+    <p class="sub">Three tabs: Check Fare, Trip History and Fare Rates.</p>
+    <div class="gallery">
+      <figure><img src="screenshots/fair.png" alt="Check Fare tab with a FAIR verdict" loading="lazy" width="1120" height="700"><figcaption>Check Fare: a fair demand</figcaption></figure>
+      <figure><img src="screenshots/history.png" alt="Trip History tab with summary and saved checks" loading="lazy" width="1120" height="700"><figcaption>Trip History: every check, with totals</figcaption></figure>
+      <figure><img src="screenshots/rates.png" alt="Fare Rates tab with city rate table and edit form" loading="lazy" width="1120" height="700"><figcaption>Fare Rates: add or update rates per city</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>OOP concepts used</h2>
+    <p class="sub">Where each concept appears in the code.</p>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>Concept</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td>Encapsulation</td><td>Private fields with validated setters in <code>CityRate</code>; immutable <code>Trip</code></td></tr>
+          <tr><td>Abstraction</td><td><code>abstract class Charge</code>, <code>abstract class CsvFileStore&lt;T&gt;</code></td></tr>
+          <tr><td>Inheritance</td><td><code>BaseFareCharge</code>, <code>WaitingCharge</code>, <code>NightCharge</code> extend <code>Charge</code></td></tr>
+          <tr><td>Polymorphism</td><td><code>AutoFareCalculator</code> loops over a <code>List&lt;Charge&gt;</code> and calls <code>calculate()</code></td></tr>
+          <tr><td>Interfaces</td><td><code>FareCalculator</code>, <code>DistanceProvider</code>, <code>Refreshable</code></td></tr>
+          <tr><td>Composition</td><td><code>FareService</code> has a calculator, distance provider, checker and storage</td></tr>
+          <tr><td>Exceptions</td><td><code>InvalidInputException</code>, <code>RouteNotFoundException</code></td></tr>
+          <tr><td>Generics, Collections, File I/O</td><td><code>CsvFileStore&lt;T&gt;</code>, <code>ArrayList</code>, <code>HashMap</code>, CSV files</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="run">
+    <h2>How to run</h2>
+    <p class="sub">FairFare is a Java desktop app. It runs on your computer with JDK 11 or newer, and needs no other libraries.</p>
+<pre class="run"># Windows
+build.bat
+run.bat
+
+# Linux / macOS
+./build.sh
+./run.sh
+
+# Fare logic tests
+java -cp out fairfare.FareLogicTest</pre>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">FairFare – Auto-Rickshaw Fare Checker · PBCST304 Object Oriented Programming</div>
+</footer>
+
+</body>
+</html>
