@@ -1,0 +1,5 @@
+# Compiled classes
+out/
+*.class
+# Runtime data created by the app (rates and trip history)
+data/
