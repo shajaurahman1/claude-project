@@ -94,6 +94,10 @@ src/fairfare/
     ├── HistoryPanel.java           Trip History tab
     ├── RatesPanel.java             Fare Rates tab
     ├── Refreshable.java            interface for tabs that reload data
+    ├── HeaderPanel.java            yellow title strip
+    ├── RoundedPanel.java           card panel (overrides paintComponent)
+    ├── StatCard.java               small caption + value card
+    ├── StyledButton.java           button (overrides paintComponent)
     └── Theme.java                  colours and fonts
 test/fairfare/FareLogicTest.java    13 tests for the fare logic
 ```
@@ -105,7 +109,8 @@ test/fairfare/FareLogicTest.java    13 tests for the fare logic
 | **Class & Object** | `CityRate`, `Trip`, `TripRequest` objects are created for every city / check |
 | **Encapsulation** | Private fields with getters/setters in `CityRate`; setters reject negative fares and invalid hours. `Trip` is immutable. `FareBreakdown.getLines()` returns a read-only list |
 | **Abstraction** | `abstract class Charge`, `abstract class CsvFileStore<T>`; interfaces `FareCalculator`, `DistanceProvider` |
-| **Inheritance** | `BaseFareCharge`, `WaitingCharge`, `NightCharge` extend `Charge`; `RateRepository`, `TripHistory` extend `CsvFileStore`; `MainFrame extends JFrame`; custom exceptions extend `Exception` |
+| **Inheritance** | `BaseFareCharge`, `WaitingCharge`, `NightCharge` extend `Charge`; `RateRepository`, `TripHistory` extend `CsvFileStore`; `MainFrame extends JFrame`; `RoundedPanel extends JPanel`, `StatCard extends RoundedPanel`; custom exceptions extend `Exception` |
+| **Method overriding** | `calculate()` / `describe()` in each `Charge` subclass; `paintComponent()` in `RoundedPanel` and `StyledButton`; `toString()` in `CityRate` |
 | **Polymorphism (runtime)** | `AutoFareCalculator` loops over `List<Charge>` and calls `calculate()` – each subclass runs its own version. `MainFrame` calls `refresh()` on any `Refreshable` tab |
 | **Interfaces** | `FareCalculator`, `DistanceProvider`, `Refreshable` |
 | **Composition** | `FareService` has a `DistanceProvider`, `FareCalculator`, `FareChecker`, `RateRepository`, `TripHistory`; `NightCharge` has a `BaseFareCharge` |

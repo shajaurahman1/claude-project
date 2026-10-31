@@ -4,8 +4,6 @@ import fairfare.service.FareService;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -22,15 +20,19 @@ public class MainFrame extends JFrame {
     public MainFrame(FareService service) {
         super("FairFare - Auto-Rickshaw Fare Checker");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1050, 620);
+        setSize(1120, 700);
+        setMinimumSize(getSize());
         setLocationRelativeTo(null);   // centre on screen
+        getContentPane().setBackground(Theme.BACKGROUND);
 
-        add(buildHeader(), BorderLayout.NORTH);
+        add(new HeaderPanel(), BorderLayout.NORTH);
 
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Check Fare", new CheckFarePanel(service));
-        tabs.addTab("Trip History", new HistoryPanel(service.getTripHistory()));
-        tabs.addTab("Fare Rates", new RatesPanel(service.getRateRepository()));
+        tabs.setFont(Theme.BOLD_FONT);
+        tabs.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
+        tabs.addTab("  Check Fare  ", new CheckFarePanel(service));
+        tabs.addTab("  Trip History  ", new HistoryPanel(service.getTripHistory()));
+        tabs.addTab("  Fare Rates  ", new RatesPanel(service.getRateRepository()));
 
         // Reload a tab's data every time it is opened (POLYMORPHISM through
         // the Refreshable interface - we don't care which panel it is).
@@ -41,23 +43,5 @@ public class MainFrame extends JFrame {
             }
         });
         add(tabs, BorderLayout.CENTER);
-    }
-
-    private JPanel buildHeader() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(Theme.HEADER_YELLOW);
-        header.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
-
-        JLabel title = new JLabel("FairFare");
-        title.setFont(Theme.TITLE_FONT);
-        title.setForeground(Theme.HEADER_TEXT);
-
-        JLabel subtitle = new JLabel("Auto-Rickshaw Fare Checker - know the right fare before you pay");
-        subtitle.setFont(Theme.LABEL_FONT);
-        subtitle.setForeground(Theme.HEADER_TEXT);
-
-        header.add(title, BorderLayout.WEST);
-        header.add(subtitle, BorderLayout.EAST);
-        return header;
     }
 }

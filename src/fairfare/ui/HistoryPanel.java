@@ -5,8 +5,6 @@ import fairfare.model.Verdict;
 import fairfare.storage.TripHistory;
 
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -14,9 +12,9 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.io.IOException;
 
 /** Shows every saved fare check, newest first, with a short summary. */
@@ -29,7 +27,11 @@ public class HistoryPanel extends JPanel implements Refreshable {
     private static final int VERDICT_COLUMN = 10;
 
     private final TripHistory history;
-    private final JLabel summaryLabel = new JLabel();
+
+    private final StatCard totalCard = new StatCard("Total checks");
+    private final StatCard fairCard = new StatCard("Fair");
+    private final StatCard excessiveCard = new StatCard("Excessive");
+    private final StatCard overchargeCard = new StatCard("Total overcharge caught");
 
     // Table cells are read-only.
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMNS, 0) {
@@ -41,26 +43,46 @@ public class HistoryPanel extends JPanel implements Refreshable {
 
     public HistoryPanel(TripHistory history) {
         this.history = history;
-        setLayout(new BorderLayout(8, 8));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(Theme.BACKGROUND);
+        setBorder(Theme.padding(14));
 
+        // Summary cards on top
+        JPanel stats = new JPanel(new GridLayout(1, 4, 12, 0));
+        stats.setOpaque(false);
+        stats.add(totalCard);
+        stats.add(fairCard);
+        stats.add(excessiveCard);
+        stats.add(overchargeCard);
+        fairCard.setValueColor(Theme.FAIR_GREEN);
+        excessiveCard.setValueColor(Theme.EXCESSIVE_RED);
+        overchargeCard.setValueColor(Theme.EXCESSIVE_RED);
+
+        // Table of trips
         JTable table = new JTable(tableModel);
-        table.setRowHeight(24);
+        table.setRowHeight(30);
+        table.setShowGrid(false);
+        table.getTableHeader().setFont(Theme.BOLD_FONT);
         table.getColumnModel().getColumn(0).setPreferredWidth(130);   // date
         table.getColumnModel().getColumn(VERDICT_COLUMN).setCellRenderer(new VerdictRenderer());
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(Theme.CARD);
 
-        JButton clearButton = new JButton("Clear History");
+        StyledButton clearButton = StyledButton.danger("Clear History");
         clearButton.addActionListener(e -> onClear());
-
-        summaryLabel.setFont(Theme.BOLD_FONT);
-        JPanel bottom = new JPanel(new BorderLayout());
-        bottom.add(summaryLabel, BorderLayout.WEST);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        buttons.setOpaque(false);
         buttons.add(clearButton);
-        bottom.add(buttons, BorderLayout.EAST);
 
-        add(new JScrollPane(table), BorderLayout.CENTER);
-        add(bottom, BorderLayout.SOUTH);
+        RoundedPanel card = RoundedPanel.card(new BorderLayout(0, 12));
+        card.setBorder(Theme.padding(18));
+        card.add(Theme.heading("Trip history"), BorderLayout.NORTH);
+        card.add(scroll, BorderLayout.CENTER);
+        card.add(buttons, BorderLayout.SOUTH);
+
+        add(stats, BorderLayout.NORTH);
+        add(card, BorderLayout.CENTER);
         refresh();
     }
 
@@ -78,10 +100,12 @@ public class HistoryPanel extends JPanel implements Refreshable {
                 t.getVerdict().getLabel()
             });
         }
-        summaryLabel.setText(String.format(
-                "Total checks: %d   |   Excessive: %d   |   Total overcharge caught: %s",
-                history.getTotalChecks(), history.getExcessiveCount(),
-                Theme.money(history.getTotalOvercharge())));
+        int total = history.getTotalChecks();
+        int excessive = history.getExcessiveCount();
+        totalCard.setValue(String.valueOf(total));
+        fairCard.setValue(String.valueOf(total - excessive));
+        excessiveCard.setValue(String.valueOf(excessive));
+        overchargeCard.setValue(Theme.money(history.getTotalOvercharge()));
     }
 
     private void onClear() {
@@ -98,15 +122,16 @@ public class HistoryPanel extends JPanel implements Refreshable {
         }
     }
 
-    /** Colours the Verdict cell green (FAIR) or red (EXCESSIVE). */
+    /** Shows the Verdict cell in green (FAIR) or red (EXCESSIVE). */
     private static class VerdictRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean selected,
                                                        boolean focused, int row, int column) {
             Component cell = super.getTableCellRendererComponent(table, value, selected, focused, row, column);
             boolean fair = Verdict.FAIR.getLabel().equals(value);
-            cell.setBackground(fair ? Theme.FAIR_GREEN : Theme.EXCESSIVE_RED);
-            cell.setForeground(Color.WHITE);
+            cell.setBackground(fair ? Theme.FAIR_LIGHT : Theme.EXCESSIVE_LIGHT);
+            cell.setForeground(fair ? Theme.FAIR_GREEN : Theme.EXCESSIVE_RED);
+            cell.setFont(Theme.BOLD_FONT);
             setHorizontalAlignment(CENTER);
             return cell;
         }

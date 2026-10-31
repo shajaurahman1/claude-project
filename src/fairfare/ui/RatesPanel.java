@@ -4,7 +4,6 @@ import fairfare.model.CityRate;
 import fairfare.storage.RateRepository;
 
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -49,11 +48,14 @@ public class RatesPanel extends JPanel implements Refreshable {
 
     public RatesPanel(RateRepository repository) {
         this.repository = repository;
-        setLayout(new BorderLayout(8, 8));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(Theme.BACKGROUND);
+        setBorder(Theme.padding(14));
 
         table = new JTable(tableModel);
-        table.setRowHeight(24);
+        table.setRowHeight(30);
+        table.setShowGrid(false);
+        table.getTableHeader().setFont(Theme.BOLD_FONT);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -61,17 +63,30 @@ public class RatesPanel extends JPanel implements Refreshable {
             }
         });
 
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(Theme.CARD);
+
+        RoundedPanel tableCard = RoundedPanel.card(new BorderLayout());
+        tableCard.setBorder(Theme.padding(18));
+        tableCard.add(Theme.heading("Official fare rates by city"), BorderLayout.NORTH);
+        tableCard.add(scroll, BorderLayout.CENTER);
+
+        add(tableCard, BorderLayout.CENTER);
         add(buildForm(), BorderLayout.SOUTH);
         refresh();
     }
 
     private JPanel buildForm() {
-        JPanel fields = new JPanel(new GridLayout(2, 8, 8, 4));
+        JPanel fields = new JPanel(new GridLayout(2, 8, 10, 4));
+        fields.setOpaque(false);
         String[] labels = {"City", "Minimum fare (Rs)", "Minimum km", "Per km (Rs)",
                            "Waiting/min (Rs)", "Night %", "Night from (0-23)", "Night to (0-23)"};
         for (String label : labels) {
-            fields.add(new JLabel(label));
+            JLabel l = new JLabel(label);
+            l.setFont(Theme.SMALL_FONT);
+            l.setForeground(Theme.MUTED);
+            fields.add(l);
         }
         fields.add(cityField);
         fields.add(minFareField);
@@ -82,22 +97,26 @@ public class RatesPanel extends JPanel implements Refreshable {
         fields.add(nightStartField);
         fields.add(nightEndField);
 
-        JButton saveButton = new JButton("Save / Update City");
-        saveButton.setBackground(Theme.HEADER_YELLOW);
+        StyledButton saveButton = StyledButton.primary("Save / Update");
         saveButton.addActionListener(e -> onSave());
-        JButton deleteButton = new JButton("Delete City");
+        StyledButton deleteButton = StyledButton.danger("Delete City");
         deleteButton.addActionListener(e -> onDelete());
-        JButton newButton = new JButton("New City");
+        StyledButton newButton = StyledButton.secondary("New City");
         newButton.addActionListener(e -> clearForm());
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttons.setOpaque(false);
         buttons.add(newButton);
         buttons.add(deleteButton);
         buttons.add(saveButton);
 
-        JPanel form = new JPanel(new BorderLayout(4, 4));
-        form.setBorder(BorderFactory.createTitledBorder("Add or update fare rates"));
-        form.add(fields, BorderLayout.CENTER);
+        RoundedPanel form = RoundedPanel.card(new BorderLayout(0, 12));
+        form.setBorder(Theme.padding(18));
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        top.add(Theme.heading("Add or update fare rates"), BorderLayout.NORTH);
+        top.add(fields, BorderLayout.CENTER);
+        form.add(top, BorderLayout.CENTER);
         form.add(buttons, BorderLayout.SOUTH);
         return form;
     }

@@ -11,7 +11,6 @@ import fairfare.service.FareChecker;
 import fairfare.service.FareService;
 
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -51,14 +50,19 @@ public class CheckFarePanel extends JPanel implements Refreshable {
     private final JTextField demandedField = new JTextField(8);
 
     // Output
+    private final RoundedPanel verdictBanner = new RoundedPanel(new BorderLayout(0, 4), Theme.NEUTRAL_LIGHT, 18);
     private final JLabel verdictLabel = new JLabel("Enter trip details", SwingConstants.CENTER);
     private final JLabel differenceLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final StatCard officialCard = new StatCard("Official fare");
+    private final StatCard demandedCard = new StatCard("Driver demanded");
+    private final StatCard differenceCard = new StatCard("Difference");
     private final JTextArea breakdownArea = new JTextArea();
 
     public CheckFarePanel(FareService service) {
         this.service = service;
-        setLayout(new BorderLayout(12, 12));
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setLayout(new BorderLayout(14, 14));
+        setBackground(Theme.BACKGROUND);
+        setBorder(Theme.padding(14));
 
         pickupBox.setEditable(true);       // known places + any typed place
         destinationBox.setEditable(true);
@@ -77,46 +81,47 @@ public class CheckFarePanel extends JPanel implements Refreshable {
 
     private JPanel buildFormPanel() {
         JPanel form = new JPanel(new GridBagLayout());
-        form.setBorder(BorderFactory.createTitledBorder("Trip details"));
+        form.setOpaque(false);
         GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(6, 6, 6, 6);
+        c.insets = new Insets(6, 4, 6, 4);
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
 
         int row = 0;
-        addRow(form, c, row++, "City:", cityBox);
-        addRow(form, c, row++, "Pickup point:", pickupBox);
-        addRow(form, c, row++, "Destination:", destinationBox);
+        addRow(form, c, row++, "City", cityBox);
+        addRow(form, c, row++, "Pickup point", pickupBox);
+        addRow(form, c, row++, "Destination", destinationBox);
 
-        JButton distanceButton = new JButton("Get Distance");
+        StyledButton distanceButton = StyledButton.secondary("Get Distance");
         distanceButton.addActionListener(e -> onGetDistance());
-        JPanel distanceRow = new JPanel(new BorderLayout(6, 0));
+        JPanel distanceRow = new JPanel(new BorderLayout(8, 0));
+        distanceRow.setOpaque(false);
         distanceRow.add(distanceField, BorderLayout.CENTER);
         distanceRow.add(distanceButton, BorderLayout.EAST);
-        addRow(form, c, row++, "Distance (km):", distanceRow);
+        addRow(form, c, row++, "Distance (km)", distanceRow);
 
-        addRow(form, c, row++, "Waiting time (min):", waitingSpinner);
+        addRow(form, c, row++, "Waiting time (min)", waitingSpinner);
 
+        nightCheck.setOpaque(false);
+        nightCheck.setFont(Theme.LABEL_FONT);
         nightCheck.setToolTipText("Ticked automatically during the city's night hours. You can change it.");
         addRow(form, c, row++, "", nightCheck);
 
-        addRow(form, c, row++, "Driver demanded (Rs):", demandedField);
+        addRow(form, c, row++, "Driver demanded (Rs)", demandedField);
 
-        JButton checkButton = new JButton("Check Fare");
-        checkButton.setFont(Theme.BOLD_FONT);
-        checkButton.setBackground(Theme.HEADER_YELLOW);
+        StyledButton checkButton = StyledButton.primary("Check Fare");
         checkButton.addActionListener(e -> onCheckFare());
-
-        JButton clearButton = new JButton("Clear");
+        StyledButton clearButton = StyledButton.secondary("Clear");
         clearButton.addActionListener(e -> clearForm());
 
-        JPanel buttons = new JPanel(new GridLayout(1, 2, 8, 0));
+        JPanel buttons = new JPanel(new GridLayout(1, 2, 10, 0));
+        buttons.setOpaque(false);
         buttons.add(checkButton);
         buttons.add(clearButton);
         c.gridx = 0;
         c.gridy = row++;
         c.gridwidth = 2;
-        c.insets = new Insets(16, 6, 6, 6);
+        c.insets = new Insets(18, 4, 4, 4);
         form.add(buttons, c);
 
         // Push everything to the top.
@@ -124,8 +129,13 @@ public class CheckFarePanel extends JPanel implements Refreshable {
         c.weighty = 1;
         form.add(new JLabel(), c);
 
-        cityBox.setPreferredSize(new Dimension(230, 28));
-        return form;
+        cityBox.setPreferredSize(new Dimension(240, 30));
+
+        RoundedPanel card = RoundedPanel.card(new BorderLayout());
+        card.setBorder(Theme.padding(18));
+        card.add(Theme.heading("Trip details"), BorderLayout.NORTH);
+        card.add(form, BorderLayout.CENTER);
+        return card;
     }
 
     private void addRow(JPanel panel, GridBagConstraints c, int row, String label,
@@ -136,6 +146,7 @@ public class CheckFarePanel extends JPanel implements Refreshable {
         c.weightx = 0;
         JLabel l = new JLabel(label);
         l.setFont(Theme.LABEL_FONT);
+        l.setForeground(Theme.MUTED);
         panel.add(l, c);
         c.gridx = 1;
         c.weightx = 1;
@@ -143,26 +154,46 @@ public class CheckFarePanel extends JPanel implements Refreshable {
     }
 
     private JPanel buildResultPanel() {
-        JPanel result = new JPanel(new BorderLayout(8, 8));
-        result.setBorder(BorderFactory.createTitledBorder("Result"));
-
+        // Coloured verdict banner
         verdictLabel.setFont(Theme.VERDICT_FONT);
-        verdictLabel.setOpaque(true);
-        verdictLabel.setPreferredSize(new Dimension(300, 90));
         differenceLabel.setFont(Theme.BOLD_FONT);
+        verdictBanner.setBorder(Theme.padding(18));
+        verdictBanner.add(verdictLabel, BorderLayout.CENTER);
+        verdictBanner.add(differenceLabel, BorderLayout.SOUTH);
 
-        JPanel top = new JPanel(new BorderLayout(4, 4));
-        top.add(verdictLabel, BorderLayout.CENTER);
-        top.add(differenceLabel, BorderLayout.SOUTH);
+        // Three small number cards
+        JPanel stats = new JPanel(new GridLayout(1, 3, 10, 0));
+        stats.setOpaque(false);
+        stats.add(officialCard);
+        stats.add(demandedCard);
+        stats.add(differenceCard);
 
+        JPanel top = new JPanel(new BorderLayout(0, 12));
+        top.setOpaque(false);
+        top.add(verdictBanner, BorderLayout.NORTH);
+        top.add(stats, BorderLayout.CENTER);
+
+        // Fare breakdown text
         breakdownArea.setEditable(false);
         breakdownArea.setFont(Theme.MONO_FONT);
-        breakdownArea.setMargin(new Insets(8, 8, 8, 8));
+        breakdownArea.setForeground(Theme.TEXT);
+        breakdownArea.setBackground(Theme.CARD);
+        breakdownArea.setBorder(Theme.padding(4));
+        JScrollPane scroll = new JScrollPane(breakdownArea);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(Theme.CARD);
 
-        result.add(top, BorderLayout.NORTH);
-        result.add(new JScrollPane(breakdownArea), BorderLayout.CENTER);
+        JPanel breakdown = new JPanel(new BorderLayout());
+        breakdown.setOpaque(false);
+        breakdown.add(Theme.heading("Fare breakdown"), BorderLayout.NORTH);
+        breakdown.add(scroll, BorderLayout.CENTER);
+
+        RoundedPanel card = RoundedPanel.card(new BorderLayout(0, 16));
+        card.setBorder(Theme.padding(18));
+        card.add(top, BorderLayout.NORTH);
+        card.add(breakdown, BorderLayout.CENTER);
         showNeutral("Enter trip details");
-        return result;
+        return card;
     }
 
     // ------------------------------------------------------------------
@@ -277,10 +308,13 @@ public class CheckFarePanel extends JPanel implements Refreshable {
 
     private void showResult(Trip trip, FareBreakdown breakdown) {
         boolean fair = trip.getVerdict() == Verdict.FAIR;
-        Color colour = fair ? Theme.FAIR_GREEN : Theme.EXCESSIVE_RED;
+        Color strong = fair ? Theme.FAIR_GREEN : Theme.EXCESSIVE_RED;
+        Color light = fair ? Theme.FAIR_LIGHT : Theme.EXCESSIVE_LIGHT;
+
+        verdictBanner.setBackground(light);
+        verdictBanner.setBorderColor(strong);
         verdictLabel.setText(trip.getVerdict().getLabel());
-        verdictLabel.setBackground(colour);
-        verdictLabel.setForeground(Color.WHITE);
+        verdictLabel.setForeground(strong);
 
         double diff = trip.getDifference();
         if (fair) {
@@ -290,32 +324,39 @@ public class CheckFarePanel extends JPanel implements Refreshable {
         } else {
             differenceLabel.setText("Driver asked " + Theme.money(diff) + " MORE than the official fare");
         }
-        differenceLabel.setForeground(colour);
+        differenceLabel.setForeground(strong);
+
+        officialCard.setValue(Theme.money(trip.getOfficialFare()));
+        demandedCard.setValue(Theme.money(trip.getDemandedFare()));
+        differenceCard.setValue(String.format("%+.2f", diff));
+        differenceCard.setValueColor(strong);
 
         StringBuilder sb = new StringBuilder();
         sb.append("Route    : ").append(trip.getPickup()).append(" -> ").append(trip.getDestination()).append('\n');
         sb.append("City     : ").append(trip.getCity()).append('\n');
         sb.append(String.format("Distance : %.2f km%n%n", trip.getDistanceKm()));
-        sb.append("FARE BREAKDOWN\n");
-        sb.append("--------------------------------------------------------------------\n");
         for (FareBreakdown.Line line : breakdown.getLines()) {
             sb.append(String.format("%-58s %10s%n", line.getDescription(), Theme.money(line.getAmount())));
         }
         sb.append("--------------------------------------------------------------------\n");
         sb.append(String.format("%-58s %10s%n", "Official fare (rounded)", Theme.money(trip.getOfficialFare())));
-        sb.append(String.format("%-58s %10s%n", "Driver demanded", Theme.money(trip.getDemandedFare())));
-        sb.append(String.format("%-58s %10s%n", "Difference", Theme.money(diff)));
-        sb.append(String.format("%nAllowed margin for rounding: %s%n", Theme.money(FareChecker.ALLOWED_MARGIN)));
-        sb.append("Saved to trip history.");
+        sb.append(String.format("%nAllowed margin for rounding: %s.  Saved to trip history.",
+                Theme.money(FareChecker.ALLOWED_MARGIN)));
         breakdownArea.setText(sb.toString());
         breakdownArea.setCaretPosition(0);
     }
 
     private void showNeutral(String text) {
+        verdictBanner.setBackground(Theme.NEUTRAL_LIGHT);
+        verdictBanner.setBorderColor(null);
         verdictLabel.setText(text);
-        verdictLabel.setBackground(new Color(238, 238, 238));
-        verdictLabel.setForeground(Theme.NEUTRAL_GREY);
-        differenceLabel.setText(" ");
+        verdictLabel.setForeground(Theme.MUTED);
+        differenceLabel.setText("Fill in the trip details and press Check Fare");
+        differenceLabel.setForeground(Theme.MUTED);
+        for (StatCard card : new StatCard[] {officialCard, demandedCard, differenceCard}) {
+            card.setValue("-");
+            card.setValueColor(Theme.TEXT);
+        }
     }
 
     private void showError(String message) {

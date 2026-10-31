@@ -7,9 +7,9 @@ import fairfare.service.RouteTableDistanceProvider;
 import fairfare.storage.RateRepository;
 import fairfare.storage.TripHistory;
 import fairfare.ui.MainFrame;
+import fairfare.ui.Theme;
 
 import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 /**
  * FairFare - Auto-Rickshaw Fare Checker
@@ -34,11 +34,7 @@ public class Main {
 
         // Swing windows must be created on the Event Dispatch Thread.
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {
-                // Fall back to the default Java look if the system one fails.
-            }
+            Theme.install();   // colours, fonts and look of the window
             new MainFrame(service).setVisible(true);
         });
     }
