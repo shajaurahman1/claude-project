@@ -216,10 +216,19 @@ Engine.on((state, msg) => {
   engineEl.dataset.state = state;
   engineText.textContent = msg;
   renderBanner();
-  document.querySelectorAll("[data-needs-r]").forEach((b) => { b.disabled = state !== "ready"; });
+  document.querySelectorAll("[data-needs-r]").forEach((b) => { b.disabled = state === "loading" || state === "failed"; });
+  $("#restartBtn").textContent = state === "off" ? "Load R" : "Restart R";
   document.querySelectorAll("[data-stop]").forEach((b) => { b.hidden = state !== "busy"; });
 });
-$("#restartBtn").addEventListener("click", () => Engine.restart());
+$("#restartBtn").addEventListener("click", () => (Engine.state === "off" ? Engine.start() : Engine.restart()));
+// R is downloaded only when it is first needed (about 25 MB), so the site opens fast on phones.
+async function ensureEngine(consoleEl) {
+  if (Engine.state === "ready") return true;
+  if (Engine.state === "busy") { if (consoleEl) sysMsg(consoleEl, "R is busy. Wait a moment or press Stop."); return false; }
+  if (consoleEl) sysMsg(consoleEl, "Starting R… The first time downloads about 25 MB, so it can take up to a minute.");
+  if (Engine.state === "off" || Engine.state === "loading") await Engine.start();
+  return Engine.state === "ready";
+}
 
 function renderBanner() {
   if (Engine.state === "loading") {
@@ -280,8 +289,7 @@ function splitInputs(text) {
 
 async function runInteractive(code, stdin, consoleEl, plotsEl) {
   if (/___/.test(code)) { sysMsg(consoleEl, "Fill in every blank (___) before running."); return null; }
-  if (Engine.state === "loading") { sysMsg(consoleEl, "R is still starting. Try again in a moment."); return null; }
-  if (Engine.state !== "ready") { sysMsg(consoleEl, "R is not running on this page. Use Copy for RStudio, or the standalone version described above."); return null; }
+  if (!(await ensureEngine(consoleEl))) { if (Engine.state !== "busy") sysMsg(consoleEl, "R could not start on this page. Use Copy for RStudio (see the note at the top)."); return null; }
   sysMsg(consoleEl, "Running…");
   try {
     const res = await Engine.run(code, splitInputs(stdin), { test: false, timeout: 30000 });
@@ -519,7 +527,8 @@ function openExercise(id) {
   $("#pCheck").addEventListener("click", async () => {
     const box = $("#resultBox");
     if (/___/.test(ed.code.value)) { box.innerHTML = `<p class="verdict fail">Fill in every blank (___) first.</p>`; return; }
-    if (Engine.state !== "ready") { box.innerHTML = `<p class="verdict fail">Checking needs R running. Nothing was marked.</p>`; return; }
+    if (Engine.state !== "ready") box.innerHTML = `<p class="note">Starting R… The first time downloads about 25 MB.</p>`;
+    if (!(await ensureEngine())) { box.innerHTML = `<p class="verdict fail">Checking needs R running. Nothing was marked.</p>`; return; }
     box.innerHTML = `<p class="note">Running ${ex.tests.length} test${ex.tests.length > 1 ? "s" : ""} with real R…</p>`;
     const results = await runTests(ex, ed.code.value);
     const ok = renderResults(results, box);
@@ -626,7 +635,7 @@ function renderLearn() {
       <a href="#learn" data-goto="lesson-extension">Lab record extension</a><a href="#learn" data-goto="lesson-probability">Exactly · at most · at least</a><a href="#learn" data-goto="lesson-scratch">Scratch editor</a></nav>
     <div style="min-width:0">${sections}${ext}${scratch}</div></div>`;
 
-  v.querySelectorAll("[data-goto]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); document.getElementById(a.dataset.goto).scrollIntoView({ behavior: "smooth" }); }));
+  v.querySelectorAll("[data-goto]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); document.getElementById(a.dataset.goto).scrollIntoView(); }));
   v.querySelectorAll("[data-open-ex]").forEach((b) => b.addEventListener("click", () => { location.hash = "#practice"; openExercise(b.dataset.openEx); window.scrollTo(0, 0); }));
   v.querySelectorAll("[data-run-lesson]").forEach((b) => b.addEventListener("click", async () => {
     const id = b.dataset.runLesson, L = LESSON_CODE[id], box = $("#out-" + id);
@@ -640,7 +649,7 @@ function renderLearn() {
   v.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => {
     const L = LESSON_CODE[b.dataset.try];
     sEd.code.value = L.code; sEd.stdin.value = L.input || ""; store.drafts.__scratch = L.code; store.inputs.__scratch = L.input || ""; save();
-    $("#lesson-scratch").scrollIntoView({ behavior: "smooth" });
+    $("#lesson-scratch").scrollIntoView();
   }));
 }
 function goLearn(key) {
@@ -721,7 +730,7 @@ async function submitMock() {
   clearInterval(mockTick);
   m.submitted = true; m.submittedAt = Date.now(); m.results = null; save();
   $("#view-mock").innerHTML = `<div class="card"><h2>Checking your answers…</h2><p class="note">Running each answer with real R.</p></div>`;
-  if (Engine.state === "loading") await new Promise((r) => { const f = () => (Engine.state !== "loading" ? r() : setTimeout(f, 500)); f(); });
+  await ensureEngine();
   if (Engine.state === "ready") {
     m.results = [];
     for (const id of m.qs) {
@@ -791,5 +800,5 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 route();
-Engine.start();
+Engine.set("off", "R not loaded yet");
 })();

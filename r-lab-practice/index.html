@@ -51,7 +51,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 code, pre, textarea, kbd { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); }
 h1, h2, h3, h4 { font-family: var(--f-display); line-height: 1.2; text-wrap: balance; margin: 0; }
 code, pre, textarea.code { font-family: var(--f-mono); }
@@ -194,6 +194,31 @@ table.prob td.v { font-family: var(--f-mono); font-variant-numeric: tabular-nums
 .hist td, .hist th { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; }
 .score { font: 700 2rem var(--f-display); }
 
+@media (max-width: 700px) {
+  /* Phones: 16px text boxes stop iOS zooming in on tap; tabs move to a bottom bar. */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  textarea.code, textarea.stdin, select, .picker select, input { font-size: 16px; }
+  textarea.code { min-height: 220px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .top .wrap { padding-block: 8px; gap: 6px 12px; }
+  .brand b { font-size: 1.1rem; }
+  .brand small { display: none; }
+  .top .engine { width: auto; margin-left: auto; font-size: .8rem; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; border-radius: 0; border-top: 1px solid var(--line);
+    background: var(--surface); padding: 6px max(10px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); }
+  nav.tabs a { flex: 1; text-align: center; padding: 10px 6px; }
+  nav.tabs a[aria-current="page"] { background: var(--accent-soft); box-shadow: none; }
+  main { padding-block: 10px 24px; }
+  .pane, .card, .lesson { padding: 12px; border-radius: 8px; }
+  .qtitle { font-size: 1.2rem; }
+  .question { font-size: 1rem; }
+  .btn { min-height: 42px; padding: 8px 14px; }
+  .btn kbd { display: none; }
+  .toolbar .btn { flex: 1 1 auto; justify-content: center; }
+  .picker .btn { min-width: 44px; justify-content: center; }
+  .console { font-size: .82rem; max-height: 320px; }
+  .rules div, .tests li { font-size: .9rem; }
+  .mockbar .timer { font-size: 1.15rem; }
+}
 @media (max-width: 1180px) {
   .practice { grid-template-columns: minmax(0, 1fr); }
   .rail { display: none; }
@@ -218,7 +243,7 @@ table.prob td.v { font-family: var(--f-mono); font-variant-numeric: tabular-nums
       <a href="#mock" data-view="mock">Mock Lab</a>
     </nav>
     <div class="engine" id="engine" data-state="off" aria-live="polite">
-      <span class="dot"></span><span id="engineText">R not started</span>
+      <span class="dot"></span><span id="engineText">R not loaded yet</span>
       <button class="btn" id="restartBtn" type="button" title="Stop any running code and start a fresh R session">Restart R</button>
     </div>
   </div>

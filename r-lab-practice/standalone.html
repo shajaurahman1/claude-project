@@ -55,7 +55,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 code, pre, textarea, kbd { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); }
 h1, h2, h3, h4 { font-family: var(--f-display); line-height: 1.2; text-wrap: balance; margin: 0; }
 code, pre, textarea.code { font-family: var(--f-mono); }
@@ -198,6 +198,31 @@ table.prob td.v { font-family: var(--f-mono); font-variant-numeric: tabular-nums
 .hist td, .hist th { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; }
 .score { font: 700 2rem var(--f-display); }
 
+@media (max-width: 700px) {
+  /* Phones: 16px text boxes stop iOS zooming in on tap; tabs move to a bottom bar. */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  textarea.code, textarea.stdin, select, .picker select, input { font-size: 16px; }
+  textarea.code { min-height: 220px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .top .wrap { padding-block: 8px; gap: 6px 12px; }
+  .brand b { font-size: 1.1rem; }
+  .brand small { display: none; }
+  .top .engine { width: auto; margin-left: auto; font-size: .8rem; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; border-radius: 0; border-top: 1px solid var(--line);
+    background: var(--surface); padding: 6px max(10px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px)); }
+  nav.tabs a { flex: 1; text-align: center; padding: 10px 6px; }
+  nav.tabs a[aria-current="page"] { background: var(--accent-soft); box-shadow: none; }
+  main { padding-block: 10px 24px; }
+  .pane, .card, .lesson { padding: 12px; border-radius: 8px; }
+  .qtitle { font-size: 1.2rem; }
+  .question { font-size: 1rem; }
+  .btn { min-height: 42px; padding: 8px 14px; }
+  .btn kbd { display: none; }
+  .toolbar .btn { flex: 1 1 auto; justify-content: center; }
+  .picker .btn { min-width: 44px; justify-content: center; }
+  .console { font-size: .82rem; max-height: 320px; }
+  .rules div, .tests li { font-size: .9rem; }
+  .mockbar .timer { font-size: 1.15rem; }
+}
 @media (max-width: 1180px) {
   .practice { grid-template-columns: minmax(0, 1fr); }
   .rail { display: none; }
@@ -224,7 +249,7 @@ table.prob td.v { font-family: var(--f-mono); font-variant-numeric: tabular-nums
       <a href="#mock" data-view="mock">Mock Lab</a>
     </nav>
     <div class="engine" id="engine" data-state="off" aria-live="polite">
-      <span class="dot"></span><span id="engineText">R not started</span>
+      <span class="dot"></span><span id="engineText">R not loaded yet</span>
       <button class="btn" id="restartBtn" type="button" title="Stop any running code and start a fresh R session">Restart R</button>
     </div>
   </div>
@@ -1971,10 +1996,19 @@ Engine.on((state, msg) => {
   engineEl.dataset.state = state;
   engineText.textContent = msg;
   renderBanner();
-  document.querySelectorAll("[data-needs-r]").forEach((b) => { b.disabled = state !== "ready"; });
+  document.querySelectorAll("[data-needs-r]").forEach((b) => { b.disabled = state === "loading" || state === "failed"; });
+  $("#restartBtn").textContent = state === "off" ? "Load R" : "Restart R";
   document.querySelectorAll("[data-stop]").forEach((b) => { b.hidden = state !== "busy"; });
 });
-$("#restartBtn").addEventListener("click", () => Engine.restart());
+$("#restartBtn").addEventListener("click", () => (Engine.state === "off" ? Engine.start() : Engine.restart()));
+// R is downloaded only when it is first needed (about 25 MB), so the site opens fast on phones.
+async function ensureEngine(consoleEl) {
+  if (Engine.state === "ready") return true;
+  if (Engine.state === "busy") { if (consoleEl) sysMsg(consoleEl, "R is busy. Wait a moment or press Stop."); return false; }
+  if (consoleEl) sysMsg(consoleEl, "Starting R… The first time downloads about 25 MB, so it can take up to a minute.");
+  if (Engine.state === "off" || Engine.state === "loading") await Engine.start();
+  return Engine.state === "ready";
+}
 
 function renderBanner() {
   if (Engine.state === "loading") {
@@ -2035,8 +2069,7 @@ function splitInputs(text) {
 
 async function runInteractive(code, stdin, consoleEl, plotsEl) {
   if (/___/.test(code)) { sysMsg(consoleEl, "Fill in every blank (___) before running."); return null; }
-  if (Engine.state === "loading") { sysMsg(consoleEl, "R is still starting. Try again in a moment."); return null; }
-  if (Engine.state !== "ready") { sysMsg(consoleEl, "R is not running on this page. Use Copy for RStudio, or the standalone version described above."); return null; }
+  if (!(await ensureEngine(consoleEl))) { if (Engine.state !== "busy") sysMsg(consoleEl, "R could not start on this page. Use Copy for RStudio (see the note at the top)."); return null; }
   sysMsg(consoleEl, "Running…");
   try {
     const res = await Engine.run(code, splitInputs(stdin), { test: false, timeout: 30000 });
@@ -2274,7 +2307,8 @@ function openExercise(id) {
   $("#pCheck").addEventListener("click", async () => {
     const box = $("#resultBox");
     if (/___/.test(ed.code.value)) { box.innerHTML = `<p class="verdict fail">Fill in every blank (___) first.</p>`; return; }
-    if (Engine.state !== "ready") { box.innerHTML = `<p class="verdict fail">Checking needs R running. Nothing was marked.</p>`; return; }
+    if (Engine.state !== "ready") box.innerHTML = `<p class="note">Starting R… The first time downloads about 25 MB.</p>`;
+    if (!(await ensureEngine())) { box.innerHTML = `<p class="verdict fail">Checking needs R running. Nothing was marked.</p>`; return; }
     box.innerHTML = `<p class="note">Running ${ex.tests.length} test${ex.tests.length > 1 ? "s" : ""} with real R…</p>`;
     const results = await runTests(ex, ed.code.value);
     const ok = renderResults(results, box);
@@ -2381,7 +2415,7 @@ function renderLearn() {
       <a href="#learn" data-goto="lesson-extension">Lab record extension</a><a href="#learn" data-goto="lesson-probability">Exactly · at most · at least</a><a href="#learn" data-goto="lesson-scratch">Scratch editor</a></nav>
     <div style="min-width:0">${sections}${ext}${scratch}</div></div>`;
 
-  v.querySelectorAll("[data-goto]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); document.getElementById(a.dataset.goto).scrollIntoView({ behavior: "smooth" }); }));
+  v.querySelectorAll("[data-goto]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); document.getElementById(a.dataset.goto).scrollIntoView(); }));
   v.querySelectorAll("[data-open-ex]").forEach((b) => b.addEventListener("click", () => { location.hash = "#practice"; openExercise(b.dataset.openEx); window.scrollTo(0, 0); }));
   v.querySelectorAll("[data-run-lesson]").forEach((b) => b.addEventListener("click", async () => {
     const id = b.dataset.runLesson, L = LESSON_CODE[id], box = $("#out-" + id);
@@ -2395,7 +2429,7 @@ function renderLearn() {
   v.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => {
     const L = LESSON_CODE[b.dataset.try];
     sEd.code.value = L.code; sEd.stdin.value = L.input || ""; store.drafts.__scratch = L.code; store.inputs.__scratch = L.input || ""; save();
-    $("#lesson-scratch").scrollIntoView({ behavior: "smooth" });
+    $("#lesson-scratch").scrollIntoView();
   }));
 }
 function goLearn(key) {
@@ -2476,7 +2510,7 @@ async function submitMock() {
   clearInterval(mockTick);
   m.submitted = true; m.submittedAt = Date.now(); m.results = null; save();
   $("#view-mock").innerHTML = `<div class="card"><h2>Checking your answers…</h2><p class="note">Running each answer with real R.</p></div>`;
-  if (Engine.state === "loading") await new Promise((r) => { const f = () => (Engine.state !== "loading" ? r() : setTimeout(f, 500)); f(); });
+  await ensureEngine();
   if (Engine.state === "ready") {
     m.results = [];
     for (const id of m.qs) {
@@ -2546,7 +2580,7 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 route();
-Engine.start();
+Engine.set("off", "R not loaded yet");
 })();
 
 </script>
